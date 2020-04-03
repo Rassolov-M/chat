@@ -4,6 +4,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
+import java.sql.SQLException;
 
 public class ClientHandler {
 
@@ -11,7 +12,6 @@ public class ClientHandler {
     private DataInputStream in;
     private DataOutputStream out;
     private Server server;
-
     private String nick;
     private String login;
 
@@ -29,13 +29,24 @@ public class ClientHandler {
 
                     //цикл аутентификации
                     while (true) {
+//                        String str = in.readUTF();
+//                        if(str.startsWith("/reg ")){
+//                            System.out.println("сообщение с просьбой регистрации прошло");
+//                            String[] tokens = str.split(" ");
+//                            if(nick != null && !server.isNickBusy(nick)){
+//                                sendMsg("/reg " + nick);
+//                                this.nick = nick;
+//                                server.subscribe(this);
+//                                break;
+//                            }
+
                         String str = in.readUTF();
                         if (str.startsWith("/reg ")) {
                             System.out.println("сообщение с просьбой регистрации прошло");
                             String[] token = str.split(" ");
                             boolean b = server
                                     .getAuthService()
-                                    .registration(token[1], token[2], token[3]);
+                                    .changeNickname(token[1], token[2]);
                             if (b) {
                                 sendMsg("Регистрация прошла успешно");
                             } else {
@@ -44,10 +55,10 @@ public class ClientHandler {
                         }
 
 
-                        if (str.equals("/end")) {
-                            throw new RuntimeException("Клиент отключился крестиком");
-
-                        }
+//                        if (str.equals("/end")) {
+//                            throw new RuntimeException("Клиент отключился крестиком");
+//
+//                        }
                         if (str.startsWith("/auth ")) {
                             String[] token = str.split(" ");
                             String newNick = server.getAuthService()
@@ -86,6 +97,21 @@ public class ClientHandler {
                                 String[] token = str.split(" ", 3);
                                 if (token.length == 3) {
                                     server.privateMsg(this, token[1], token[2]);
+                                }
+                            }
+                            if (str.startsWith("changenick ")){
+                                String newNickname = str.split(" ", 2)[1];
+                                if (newNickname.contains(" ")){
+                                    sendMsg("Ник не может содержать пробелы");
+                                    continue;
+                                }
+                                if (server.getAuthService().changeNickname(this.nick, newNickname)){
+                                    this.nick = newNickname;
+                                    sendMsg("/changenick " + nick);
+                                    sendMsg("Ник был изменен");
+                                    server.broadcastClientList();
+                                }else{
+                                    sendMsg("Ник уже занят");
                                 }
                             }
 
