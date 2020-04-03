@@ -3,6 +3,7 @@ package server;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.sql.SQLException;
 import java.util.Vector;
 
 
@@ -17,12 +18,22 @@ public class Server {
     public Server() {
         clients = new Vector<>();
         authService = new SimpleAuthService();
+//        authService = new DatabaseAuthService();
         ServerSocket server = null;
         Socket socket = null;
 
         try {
             server = new ServerSocket(8189);
             System.out.println("Сервер запущен");
+
+            try {
+                DataBase.connect();
+            } catch (ClassNotFoundException e) {
+                e.printStackTrace();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+
 
             while (true) {
                 socket = server.accept();
@@ -43,6 +54,8 @@ public class Server {
                 server.close();
             } catch (IOException e) {
                 e.printStackTrace();
+            }finally {
+                DataBase.disconnection();
             }
         }
     }
@@ -87,6 +100,15 @@ public class Server {
     public boolean isLoginAuthorized(String login) {
         for (ClientHandler c : clients) {
             if (c.getLogin().equals(login)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean isNickBusy(String nickname) {
+        for (ClientHandler client : clients) {
+            if (client.getNick().equals(nickname)) {
                 return true;
             }
         }
