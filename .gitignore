@@ -1,6 +1,6 @@
 /.idea
 .iml
-chat.db
+server/src/main/java/server/chat.db
 # Project exclude paths
 /client/target/
 /server/target/

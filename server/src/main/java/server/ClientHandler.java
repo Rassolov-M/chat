@@ -4,7 +4,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
-import java.sql.SQLException;
+import java.net.SocketTimeoutException;
 
 public class ClientHandler {
 
@@ -12,6 +12,7 @@ public class ClientHandler {
     private DataInputStream in;
     private DataOutputStream out;
     private Server server;
+
     private String nick;
     private String login;
 
@@ -25,28 +26,17 @@ public class ClientHandler {
 
             new Thread(() -> {
                 try {
-//                    socket.setSoTimeout(3000);
+                    socket.setSoTimeout(120000);
 
                     //цикл аутентификации
                     while (true) {
-//                        String str = in.readUTF();
-//                        if(str.startsWith("/reg ")){
-//                            System.out.println("сообщение с просьбой регистрации прошло");
-//                            String[] tokens = str.split(" ");
-//                            if(nick != null && !server.isNickBusy(nick)){
-//                                sendMsg("/reg " + nick);
-//                                this.nick = nick;
-//                                server.subscribe(this);
-//                                break;
-//                            }
-
                         String str = in.readUTF();
                         if (str.startsWith("/reg ")) {
                             System.out.println("сообщение с просьбой регистрации прошло");
                             String[] token = str.split(" ");
                             boolean b = server
                                     .getAuthService()
-                                    .changeNickname(token[1], token[2]);
+                                    .registration(token[1], token[2], token[3]);
                             if (b) {
                                 sendMsg("Регистрация прошла успешно");
                             } else {
@@ -55,10 +45,10 @@ public class ClientHandler {
                         }
 
 
-//                        if (str.equals("/end")) {
-//                            throw new RuntimeException("Клиент отключился крестиком");
-//
-//                        }
+                        if (str.equals("/end")) {
+                            throw new RuntimeException("Клиент отключился крестиком");
+
+                        }
                         if (str.startsWith("/auth ")) {
                             String[] token = str.split(" ");
                             String newNick = server.getAuthService()
@@ -72,6 +62,7 @@ public class ClientHandler {
                                     nick = newNick;
                                     server.subscribe(this);
                                     System.out.println("Клиент " + nick + " прошел аутентификацию");
+                                    socket.setSoTimeout(0);
                                     break;
                                 } else {
                                     sendMsg("С этим логином уже авторизовались");
@@ -99,19 +90,20 @@ public class ClientHandler {
                                     server.privateMsg(this, token[1], token[2]);
                                 }
                             }
-                            if (str.startsWith("changenick ")){
-                                String newNickname = str.split(" ", 2)[1];
-                                if (newNickname.contains(" ")){
-                                    sendMsg("Ник не может содержать пробелы");
+
+                            if (str.startsWith("/chnick ")) {
+                                String[] token = str.split(" ", 2);
+                                if (token[1].contains(" ")) {
+                                    sendMsg("Ник не может содержать пробелов");
                                     continue;
                                 }
-                                if (server.getAuthService().changeNickname(this.nick, newNickname)){
-                                    this.nick = newNickname;
-                                    sendMsg("/changenick " + nick);
-                                    sendMsg("Ник был изменен");
+                                if (server.getAuthService().changeNick(this.nick, token[1])) {
+                                    sendMsg("/yournickis " + token[1]);
+                                    sendMsg("Ваш ник изменен на " + token[1]);
+                                    this.nick = token[1];
                                     server.broadcastClientList();
-                                }else{
-                                    sendMsg("Ник уже занят");
+                                } else {
+                                    sendMsg("Не удалось изменить ник. Ник " + token[1] + " уже существует");
                                 }
                             }
 
@@ -119,6 +111,8 @@ public class ClientHandler {
                             server.broadcastMsg(nick, str);
                         }
                     }
+                } catch (SocketTimeoutException e) {
+                    System.out.println("Клиент отключился по таймауту");
                 } catch (RuntimeException e) {
                     System.out.println(e.getMessage());
                 } catch (IOException e) {
