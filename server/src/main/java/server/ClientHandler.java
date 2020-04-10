@@ -26,7 +26,7 @@ public class ClientHandler {
 
             new Thread(() -> {
                 try {
-                    socket.setSoTimeout(120000);
+//                    socket.setSoTimeout(120000);
 
                     //цикл аутентификации
                     while (true) {
@@ -62,7 +62,7 @@ public class ClientHandler {
                                     nick = newNick;
                                     server.subscribe(this);
                                     System.out.println("Клиент " + nick + " прошел аутентификацию");
-                                    socket.setSoTimeout(0);
+//                                    socket.setSoTimeout(0);
                                     break;
                                 } else {
                                     sendMsg("С этим логином уже авторизовались");
