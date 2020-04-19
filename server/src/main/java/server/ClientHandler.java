@@ -5,6 +5,10 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
+import java.util.logging.ConsoleHandler;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class ClientHandler {
 
@@ -15,14 +19,23 @@ public class ClientHandler {
 
     private String nick;
     private String login;
+    private static final Logger logger = Logger.getLogger(ClientHandler.class.getName());
+    private static Handler fileHandler;
 
     public ClientHandler(Socket socket, Server server) {
+        logger.setLevel(Level.ALL);
+        Handler handler = new ConsoleHandler();
+        handler.setLevel(Level.ALL);
+        logger.addHandler(handler);
+
         try {
             this.socket = socket;
             System.out.println("RemoteSocketAddress:  " + socket.getRemoteSocketAddress());
             this.server = server;
             in = new DataInputStream(socket.getInputStream());
             out = new DataOutputStream(socket.getOutputStream());
+
+
 
             new Thread(() -> {
                 try {
@@ -32,15 +45,19 @@ public class ClientHandler {
                     while (true) {
                         String str = in.readUTF();
                         if (str.startsWith("/reg ")) {
-                            System.out.println("сообщение с просьбой регистрации прошло");
+                            logger.log(Level.FINE, "Пользователь пытается аутентифицироваться");
+                            //System.out.println("сообщение с просьбой регистрации прошло");
                             String[] token = str.split(" ");
                             boolean b = server
                                     .getAuthService()
                                     .registration(token[1], token[2], token[3]);
                             if (b) {
-                                sendMsg("Регистрация прошла успешно");
+                                logger.log(Level.FINE, "Регистрация прошла успешно");
+//                                sendMsg("Регистрация прошла успешно");
                             } else {
-                                sendMsg("Логин или ник уже занят");
+                                logger.log(Level.FINE, "Логин или ник уже занят");
+//                                sendMsg("Логин или ник уже занят");
+
                             }
                         }
 
@@ -61,13 +78,16 @@ public class ClientHandler {
                                     sendMsg("/authok " + newNick);
                                     nick = newNick;
                                     server.subscribe(this);
-                                    System.out.println("Клиент " + nick + " прошел аутентификацию");
+                                    logger.log(Level.FINER,"User " + this.nick + " прошел аутентификацию");
+//                                    System.out.println("Клиент " + nick + " прошел аутентификацию");
 //                                    socket.setSoTimeout(0);
                                     break;
                                 } else {
-                                    sendMsg("С этим логином уже авторизовались");
+                                    logger.log(Level.FINER,"User " + this.nick + " С этим логином уже авторизовались");
+//                                    sendMsg("С этим логином уже авторизовались");
                                 }
                             } else {
+                                logger.log(Level.FINER,"User " + this.nick + " Неверный логин / пароль");
                                 sendMsg("Неверный логин / пароль");
                             }
                         }
@@ -94,16 +114,22 @@ public class ClientHandler {
                             if (str.startsWith("/chnick ")) {
                                 String[] token = str.split(" ", 2);
                                 if (token[1].contains(" ")) {
-                                    sendMsg("Ник не может содержать пробелов");
+                                    logger.log(Level.INFO,"User " + this.nick + " Ник не может содержать пробелов");
+//                                    sendMsg("Ник не может содержать пробелов");
                                     continue;
                                 }
                                 if (server.getAuthService().changeNick(this.nick, token[1])) {
-                                    sendMsg("/yournickis " + token[1]);
-                                    sendMsg("Ваш ник изменен на " + token[1]);
+
+
+                                    logger.log(Level.INFO,"User " + this.nick + "/yournickis" + token[1]);
+                                    logger.log(Level.INFO,"User " + this.nick + "Ваш ник изменен на " + token[1]);
+//                                    sendMsg("/yournickis " + token[1]);
+//                                    sendMsg("Ваш ник изменен на " + token[1]);
                                     this.nick = token[1];
                                     server.broadcastClientList();
                                 } else {
-                                    sendMsg("Не удалось изменить ник. Ник " + token[1] + " уже существует");
+                                    logger.log(Level.INFO,"User " + this.nick + "Не удалось изменить ник. Ник " + token[1] + " уже существует");
+//                                    sendMsg("Не удалось изменить ник. Ник " + token[1] + " уже существует");
                                 }
                             }
 
@@ -112,14 +138,16 @@ public class ClientHandler {
                         }
                     }
                 } catch (SocketTimeoutException e) {
-                    System.out.println("Клиент отключился по таймауту");
+                    logger.log(Level.INFO,"Клиент отключился по таймауту");
+//                    System.out.println("Клиент отключился по таймауту");
                 } catch (RuntimeException e) {
                     System.out.println(e.getMessage());
                 } catch (IOException e) {
                     e.printStackTrace();
                 } finally {
                     server.unsubscribe(this);
-                    System.out.println("Клиент отключился");
+                    logger.log(Level.INFO,"Клиент отключился");
+//                    System.out.println("Клиент отключился");
                     try {
                         socket.close();
                     } catch (IOException e) {
