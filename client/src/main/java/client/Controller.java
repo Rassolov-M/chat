@@ -57,6 +57,7 @@ public class Controller implements Initializable {
 
     private Stage regStage;
 
+
     public void setAuthenticated(boolean authenticated) {
         this.authenticated = authenticated;
         authPanel.setVisible(!authenticated);
